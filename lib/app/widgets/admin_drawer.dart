@@ -17,6 +17,7 @@ class AdminDrawer extends StatelessWidget {
   static const _builtRoutes = {
     Routes.dashboardAdmin,
     Routes.masterJadwal,
+    Routes.masterJurnal,
     Routes.masterPeriode,
     Routes.masterPelajaran,
     Routes.masterJam,
@@ -52,11 +53,11 @@ class AdminDrawer extends StatelessWidget {
                   _DrawerItem(
                     icon: Icons.assignment_turned_in_outlined,
                     label: 'Jurnal Mengajar',
-                    route: _placeholderRoute,
+                    route: Routes.masterJurnal,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterJurnal,
                       label: 'Jurnal Mengajar',
                     ),
                   ),

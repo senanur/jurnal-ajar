@@ -4,6 +4,7 @@ import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/masterdata/siswa_page.dart' show KelasOption;
 import 'package:jurnal_mengajar/app/routes.dart';
 import 'package:jurnal_mengajar/app/utils/date_utils.dart';
+import 'package:jurnal_mengajar/app/widgets/curved_gradient_header.dart';
 import 'package:jurnal_mengajar/app/widgets/master_data_widgets.dart';
 import 'package:jurnal_mengajar/app/widgets/week_date_strip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -254,53 +255,47 @@ class _JadwalListPageState extends State<JadwalListPage> {
         onAdd: () => _openForm(),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Obx(
-                () => WeekDateStrip(
-                  weekDays: controller.weekDays,
-                  selectedDate: controller.selectedDate.value,
-                  weekDirection: controller.weekDirection.value,
-                  onPrevious: controller.previousWeek,
-                  onNext: controller.nextWeek,
-                  onSelectDate: controller.selectDate,
-                ),
-              ),
-              const SizedBox(height: 16),
-              MasterDataSearchField(
-                controller: controller.searchController,
-                hint: 'Cari Guru, Mapel, Kelas atau Jam',
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Obx(() {
-                  if (controller.isLoading.value) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final list = controller.filtered;
-                  if (list.isEmpty) {
-                    return const MasterDataEmptyState(
-                      message: 'Tidak ada jadwal mengajar pada tanggal ini.',
-                    );
-                  }
-                  return ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (context, index) {
-                      final item = list[index];
-                      return MasterDataEntrance(
-                        delay: Duration(milliseconds: 30 * index),
-                        child: _JadwalTile(
-                          item: item,
-                          onTap: () => _openForm(jadwalId: item.id),
-                        ),
-                      );
-                    },
+        child: CurvedGradientListBody(
+          header: Obx(
+            () => WeekDateStrip(
+              weekDays: controller.weekDays,
+              selectedDate: controller.selectedDate.value,
+              weekDirection: controller.weekDirection.value,
+              onPrevious: controller.previousWeek,
+              onNext: controller.nextWeek,
+              onSelectDate: controller.selectDate,
+            ),
+          ),
+          searchField: MasterDataSearchField(
+            controller: controller.searchController,
+            hint: 'Cari Guru, Mapel, Kelas atau Jam',
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Obx(() {
+              if (controller.isLoading.value) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final list = controller.filtered;
+              if (list.isEmpty) {
+                return const MasterDataEmptyState(
+                  message: 'Tidak ada jadwal mengajar pada tanggal ini.',
+                );
+              }
+              return ListView.builder(
+                itemCount: list.length,
+                itemBuilder: (context, index) {
+                  final item = list[index];
+                  return MasterDataEntrance(
+                    delay: Duration(milliseconds: 30 * index),
+                    child: _JadwalTile(
+                      item: item,
+                      onTap: () => _openForm(jadwalId: item.id),
+                    ),
                   );
-                }),
-              ),
-            ],
+                },
+              );
+            }),
           ),
         ),
       ),

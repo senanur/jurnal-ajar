@@ -8,6 +8,7 @@ class Routes {
   static const String dashboardAdmin = '/dashboard-admin';
 
   static const String masterJadwal = '/master/jadwal';
+  static const String masterJurnal = '/master/jurnal';
   static const String masterPeriode = '/master/periode';
   static const String masterKelas = '/master/kelas';
   static const String masterPelajaran = '/master/pelajaran';

@@ -9,6 +9,7 @@ import 'package:jurnal_mengajar/app/login.dart';
 import 'package:jurnal_mengajar/app/masterdata/guru_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/jadwal_mengajar_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/jam_pelajaran_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/jurnal_mengajar_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/kelas_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/pelajaran_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/periode_page.dart';
@@ -86,6 +87,11 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: Routes.masterJadwal,
           page: () => const JadwalListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterJurnal,
+          page: () => const JurnalListPage(),
           transition: Transition.fade,
         ),
         GetPage(

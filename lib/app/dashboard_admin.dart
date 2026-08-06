@@ -368,7 +368,11 @@ class _StatGridState extends State<_StatGrid> {
         crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.25,
+        // Fixed height (not aspect ratio) so the card's content — icon, big
+        // number, label — always fits regardless of the grid's width; on a
+        // narrow phone viewport an aspect-ratio-driven height was too short
+        // and the label overflowed.
+        mainAxisExtent: 136,
       ),
       itemBuilder: (context, index) {
         return _AnimatedEntrance(
@@ -443,7 +447,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: data.gradient,

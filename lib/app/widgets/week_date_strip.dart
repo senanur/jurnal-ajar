@@ -83,14 +83,15 @@ class WeekDateStrip extends StatelessWidget {
               ),
               child: Row(
                 key: ValueKey(weekDays.first),
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   for (var i = 0; i < 7; i++)
-                    _DayCell(
-                      date: weekDays[i],
-                      label: dayLabelsShort[i],
-                      selected: isSameDay(weekDays[i], selectedDate),
-                      onTap: () => onSelectDate(weekDays[i]),
+                    Expanded(
+                      child: _DayCell(
+                        date: weekDays[i],
+                        label: dayLabelsShort[i],
+                        selected: isSameDay(weekDays[i], selectedDate),
+                        onTap: () => onSelectDate(weekDays[i]),
+                      ),
                     ),
                 ],
               ),
