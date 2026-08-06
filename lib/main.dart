@@ -7,6 +7,7 @@ import 'package:jurnal_mengajar/app/dashboard_admin.dart';
 import 'package:jurnal_mengajar/app/dashboard_guru.dart';
 import 'package:jurnal_mengajar/app/login.dart';
 import 'package:jurnal_mengajar/app/masterdata/guru_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/jadwal_mengajar_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/jam_pelajaran_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/kelas_page.dart';
 import 'package:jurnal_mengajar/app/masterdata/pelajaran_page.dart';
@@ -80,6 +81,11 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: Routes.dashboardAdmin,
           page: () => const DashboardAdmin(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterJadwal,
+          page: () => const JadwalListPage(),
           transition: Transition.fade,
         ),
         GetPage(

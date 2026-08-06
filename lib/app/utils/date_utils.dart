@@ -38,6 +38,12 @@ String formatDateIso(DateTime d) {
   return '$y-$m-$day';
 }
 
+/// e.g. "04 Juni 2026" — used on form fields that show a picked date.
+String formatDateLong(DateTime d) {
+  final day = d.day.toString().padLeft(2, '0');
+  return '$day ${monthNamesId[d.month - 1]} ${d.year}';
+}
+
 /// Month/year label for a week strip, taken from the week's Thursday (index
 /// 4) so a week straddling two months resolves the same way ISO week
 /// numbering does.

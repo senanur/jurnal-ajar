@@ -345,18 +345,21 @@ class GuruDetailController extends GetxController {
         }
       }
 
+      // jadwal_mengajar.jam_ids stores master_jam.jam_ke (1..10), not
+      // master_jam.id — confirmed against real data (existing jam_ids like
+      // "1" have no matching master_jam.id, since those start at 4).
       final jamMap = <int, JamInfo>{};
       if (jamIds.isNotEmpty) {
         final rows = await _supabase
             .from('master_jam')
-            .select('id, jam_ke, waktu_reguler')
-            .inFilter('id', jamIds.toList()) as List;
+            .select('jam_ke, waktu_reguler')
+            .inFilter('jam_ke', jamIds.toList()) as List;
         for (final r in rows) {
           final row = r as Map<String, dynamic>;
-          final id = asInt(row['id']);
-          if (id == null) continue;
-          jamMap[id] = JamInfo(
-            jamKe: asInt(row['jam_ke']) ?? 0,
+          final jamKe = asInt(row['jam_ke']);
+          if (jamKe == null) continue;
+          jamMap[jamKe] = JamInfo(
+            jamKe: jamKe,
             waktu: (row['waktu_reguler'] as String?) ?? '',
           );
         }

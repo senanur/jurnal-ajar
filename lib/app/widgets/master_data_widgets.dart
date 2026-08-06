@@ -341,7 +341,9 @@ class MasterDataDropdown<T> extends StatelessWidget {
   final T? value;
   final List<T> items;
   final String Function(T) itemLabel;
-  final ValueChanged<T?> onChanged;
+  /// Null disables the dropdown (used for the locked-field states on the
+  /// Jadwal Mengajar form once its journal has already been filled).
+  final ValueChanged<T?>? onChanged;
   final String hint;
 
   @override

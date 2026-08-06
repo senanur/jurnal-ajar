@@ -16,6 +16,7 @@ class AdminDrawer extends StatelessWidget {
 
   static const _builtRoutes = {
     Routes.dashboardAdmin,
+    Routes.masterJadwal,
     Routes.masterPeriode,
     Routes.masterPelajaran,
     Routes.masterJam,
@@ -62,11 +63,11 @@ class AdminDrawer extends StatelessWidget {
                   _DrawerItem(
                     icon: Icons.calendar_month_outlined,
                     label: 'Jadwal Mengajar',
-                    route: _placeholderRoute,
+                    route: Routes.masterJadwal,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterJadwal,
                       label: 'Jadwal Mengajar',
                     ),
                   ),
