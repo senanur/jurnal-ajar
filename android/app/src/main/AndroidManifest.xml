@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for Supabase in release builds. The debug and profile
+         manifests declare this separately, so its absence here only ever
+         surfaced as "Failed host lookup" on a release APK. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="jurnal_mengajar"
         android:name="${applicationName}"
