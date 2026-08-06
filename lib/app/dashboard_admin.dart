@@ -2,45 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:jurnal_mengajar/app/utils/date_utils.dart';
 import 'package:jurnal_mengajar/app/widgets/admin_drawer.dart';
+import 'package:jurnal_mengajar/app/widgets/week_date_strip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-const List<String> _dayLabels = ['min', 'sen', 'sel', 'rab', 'kam', 'jum', 'sab'];
-const List<String> _monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-];
-
-int? _asInt(dynamic value) {
-  if (value is int) return value;
-  if (value is num) return value.toInt();
-  if (value is String) return int.tryParse(value);
-  return null;
-}
-
-DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
-
-bool _isSameDay(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month && a.day == b.day;
-
-/// Sunday that starts the week containing [date]. DateTime.weekday runs
-/// Mon=1..Sun=7, so Sunday needs `% 7` to land on 0 instead of 7.
-DateTime _startOfWeek(DateTime date) {
-  final daysFromSunday = date.weekday % 7;
-  return _dateOnly(date).subtract(Duration(days: daysFromSunday));
-}
-
-String _formatDate(DateTime d) {
-  final y = d.year.toString().padLeft(4, '0');
-  final m = d.month.toString().padLeft(2, '0');
-  final day = d.day.toString().padLeft(2, '0');
-  return '$y-$m-$day';
-}
 
 class DashboardAdminController extends GetxController {
   SupabaseClient get _supabase => Supabase.instance.client;
 
-  final Rx<DateTime> selectedDate = _dateOnly(DateTime.now()).obs;
+  final Rx<DateTime> selectedDate = dateOnly(DateTime.now()).obs;
   final RxInt weekDirection = 0.obs; // -1 prev, 1 next, drives slide animation
 
   final RxBool isLoadingProfile = true.obs;
@@ -62,18 +32,7 @@ class DashboardAdminController extends GetxController {
     _loadStats();
   }
 
-  List<DateTime> get weekDays {
-    final start = _startOfWeek(selectedDate.value);
-    return List.generate(7, (i) => start.add(Duration(days: i)));
-  }
-
-  /// Month/year shown above the week strip, taken from the week's Thursday
-  /// (index 4) so a week straddling two months resolves the same way ISO
-  /// week numbering does.
-  String get headerLabel {
-    final anchor = weekDays[4];
-    return '${_monthNames[anchor.month - 1]} ${anchor.year}';
-  }
+  List<DateTime> get weekDays => weekDaysFor(selectedDate.value);
 
   void previousWeek() {
     weekDirection.value = -1;
@@ -88,7 +47,7 @@ class DashboardAdminController extends GetxController {
   }
 
   void selectDate(DateTime date) {
-    if (_isSameDay(date, selectedDate.value)) return;
+    if (isSameDay(date, selectedDate.value)) return;
     selectedDate.value = date;
     _loadStats();
   }
@@ -117,7 +76,7 @@ class DashboardAdminController extends GetxController {
   Future<void> _loadStats() async {
     isLoadingStats.value = true;
     final date = selectedDate.value;
-    final dateStr = _formatDate(date);
+    final dateStr = formatDateIso(date);
     final weekday = date.weekday; // matches jadwal_mengajar.hari (1=Senin..7=Minggu)
 
     try {
@@ -126,7 +85,7 @@ class DashboardAdminController extends GetxController {
           .select('id')
           .eq('is_active', true)
           .maybeSingle();
-      final periodeId = _asInt(periode?['id']);
+      final periodeId = asInt(periode?['id']);
 
       var jadwalQuery = _supabase
           .from('jadwal_mengajar')
@@ -141,7 +100,7 @@ class DashboardAdminController extends GetxController {
       final guruIdsToday = <String>{};
       final jadwalGuruById = <int, String>{};
       for (final row in jadwalRows) {
-        final id = _asInt(row['id']);
+        final id = asInt(row['id']);
         final guruId = row['guru_id'] as String?;
         if (id != null && guruId != null) {
           guruIdsToday.add(guruId);
@@ -166,12 +125,12 @@ class DashboardAdminController extends GetxController {
         }
 
         final coveredJadwalIds = <int>{};
-        final jadwalId = _asInt(row['jadwal_id']);
+        final jadwalId = asInt(row['jadwal_id']);
         if (jadwalId != null) coveredJadwalIds.add(jadwalId);
         final jadwalIds = row['jadwal_ids'];
         if (jadwalIds is List) {
           for (final v in jadwalIds) {
-            final parsed = _asInt(v);
+            final parsed = asInt(v);
             if (parsed != null) coveredJadwalIds.add(parsed);
           }
         }
@@ -223,7 +182,16 @@ class _DashboardAdminState extends State<DashboardAdmin> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _WeekSelector(controller: controller),
+              Obx(
+                () => WeekDateStrip(
+                  weekDays: controller.weekDays,
+                  selectedDate: controller.selectedDate.value,
+                  weekDirection: controller.weekDirection.value,
+                  onPrevious: controller.previousWeek,
+                  onNext: controller.nextWeek,
+                  onSelectDate: controller.selectDate,
+                ),
+              ),
               const SizedBox(height: 24),
               _StatGrid(controller: controller),
             ],
@@ -344,175 +312,6 @@ class _UserAvatar extends StatelessWidget {
               },
             ),
     );
-  }
-}
-
-class _WeekSelector extends StatelessWidget {
-  const _WeekSelector({required this.controller});
-
-  final DashboardAdminController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _NavArrow(icon: Icons.chevron_left_rounded, onTap: controller.previousWeek),
-              Obx(
-                () => AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.3),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  ),
-                  child: Text(
-                    controller.headerLabel,
-                    key: ValueKey(controller.headerLabel),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: MainColor.primaryColor,
-                    ),
-                  ),
-                ),
-              ),
-              _NavArrow(icon: Icons.chevron_right_rounded, onTap: controller.nextWeek),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Obx(() {
-            final days = controller.weekDays;
-            final direction = controller.weekDirection.value;
-            return ClipRect(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => SlideTransition(
-                  position: Tween<Offset>(
-                    begin: Offset(direction >= 0 ? 1 : -1, 0),
-                    end: Offset.zero,
-                  ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-                  child: FadeTransition(opacity: animation, child: child),
-                ),
-                child: Row(
-                  key: ValueKey(days.first),
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    for (var i = 0; i < 7; i++)
-                      _DayCell(
-                        date: days[i],
-                        label: _dayLabels[i],
-                        controller: controller,
-                      ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavArrow extends StatelessWidget {
-  const _NavArrow({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: MainColor.fourthColor.withValues(alpha: 0.4),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(icon, color: MainColor.primaryColor, size: 22),
-        ),
-      ),
-    );
-  }
-}
-
-class _DayCell extends StatelessWidget {
-  const _DayCell({
-    required this.date,
-    required this.label,
-    required this.controller,
-  });
-
-  final DateTime date;
-  final String label;
-  final DashboardAdminController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Obx(() {
-      final selected = _isSameDay(date, controller.selectedDate.value);
-      final today = _isSameDay(date, _dateOnly(DateTime.now()));
-      return GestureDetector(
-        onTap: () => controller.selectDate(date),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: selected ? MainColor.primaryColor : Colors.black45,
-              ),
-            ),
-            const SizedBox(height: 8),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected ? MainColor.primaryColor : Colors.transparent,
-                shape: BoxShape.circle,
-                border: (!selected && today)
-                    ? Border.all(color: MainColor.thirdColor, width: 1.6)
-                    : null,
-              ),
-              child: Text(
-                '${date.day}',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : Colors.black87,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
   }
 }
 

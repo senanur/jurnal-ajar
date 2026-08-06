@@ -14,6 +14,16 @@ class AdminDrawer extends StatelessWidget {
 
   static const _placeholderRoute = '#placeholder';
 
+  static const _builtRoutes = {
+    Routes.dashboardAdmin,
+    Routes.masterPeriode,
+    Routes.masterPelajaran,
+    Routes.masterJam,
+    Routes.masterKelas,
+    Routes.masterGuru,
+    Routes.masterSiswa,
+  };
+
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -101,66 +111,66 @@ class AdminDrawer extends StatelessWidget {
                   _DrawerItem(
                     icon: Icons.sell_outlined,
                     label: 'Periode',
-                    route: _placeholderRoute,
+                    route: Routes.masterPeriode,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterPeriode,
                       label: 'Periode',
                     ),
                   ),
                   _DrawerItem(
                     icon: Icons.menu_book_outlined,
                     label: 'Pelajaran',
-                    route: _placeholderRoute,
+                    route: Routes.masterPelajaran,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterPelajaran,
                       label: 'Pelajaran',
                     ),
                   ),
                   _DrawerItem(
                     icon: Icons.access_time_rounded,
                     label: 'Jam Pelajaran',
-                    route: _placeholderRoute,
+                    route: Routes.masterJam,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterJam,
                       label: 'Jam Pelajaran',
                     ),
                   ),
                   _DrawerItem(
                     icon: Icons.meeting_room_outlined,
                     label: 'Kelas',
-                    route: _placeholderRoute,
+                    route: Routes.masterKelas,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterKelas,
                       label: 'Kelas',
                     ),
                   ),
                   _DrawerItem(
                     icon: Icons.school_outlined,
                     label: 'Guru',
-                    route: _placeholderRoute,
+                    route: Routes.masterGuru,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterGuru,
                       label: 'Guru',
                     ),
                   ),
                   _DrawerItem(
                     icon: Icons.groups_outlined,
                     label: 'Siswa',
-                    route: _placeholderRoute,
+                    route: Routes.masterSiswa,
                     currentRoute: currentRoute,
                     onTap: () => _handleTap(
                       context,
-                      route: _placeholderRoute,
+                      route: Routes.masterSiswa,
                       label: 'Siswa',
                     ),
                   ),
@@ -226,8 +236,8 @@ class AdminDrawer extends StatelessWidget {
   }) {
     Navigator.of(context).pop();
     if (route == currentRoute) return;
-    if (route == Routes.dashboardAdmin) {
-      Get.offAllNamed(Routes.dashboardAdmin);
+    if (_builtRoutes.contains(route)) {
+      Get.offAllNamed(route);
       return;
     }
     Get.snackbar(

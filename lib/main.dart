@@ -6,6 +6,12 @@ import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/dashboard_admin.dart';
 import 'package:jurnal_mengajar/app/dashboard_guru.dart';
 import 'package:jurnal_mengajar/app/login.dart';
+import 'package:jurnal_mengajar/app/masterdata/guru_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/jam_pelajaran_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/kelas_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/pelajaran_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/periode_page.dart';
+import 'package:jurnal_mengajar/app/masterdata/siswa_page.dart';
 import 'package:jurnal_mengajar/app/register.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
 import 'package:jurnal_mengajar/app/splash.dart';
@@ -74,6 +80,36 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: Routes.dashboardAdmin,
           page: () => const DashboardAdmin(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterPeriode,
+          page: () => const PeriodeListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterKelas,
+          page: () => const KelasListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterPelajaran,
+          page: () => const PelajaranListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterJam,
+          page: () => const JamListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterSiswa,
+          page: () => const SiswaListPage(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.masterGuru,
+          page: () => const GuruListPage(),
           transition: Transition.fade,
         ),
       ],
