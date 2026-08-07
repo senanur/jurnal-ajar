@@ -48,3 +48,6 @@ design/
 .agents/
 android/build/
 skills-lock.json
+
+# Postman environment contains real credentials
+assets/api/jm_env.json

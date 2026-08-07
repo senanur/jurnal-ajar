@@ -4,19 +4,19 @@
 	"values": [
 		{
 			"key": "SUPABASE_URL",
-			"value": "https://xfucaxclnsugqmtbqdqj.supabase.co",
+			"value": "https://your-project-ref.supabase.co",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "SUPABASE_ANON_KEY",
-			"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmdWNheGNsbnN1Z3FtdGJxZHFqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5NzYxNzcsImV4cCI6MjA5MTU1MjE3N30.a9P3ZyCn0LqqVc_HSPXsydgFv1ZuZGMzhPZnza8GGFc",
+			"value": "",
 			"type": "secret",
 			"enabled": true
 		},
 		{
 			"key": "SUPABASE_PUBLISHABLE_KEY",
-			"value": "sb_publishable_k-hHcizY39DUjnGhJPFyzw_YOk6ghLW",
+			"value": "",
 			"type": "secret",
 			"enabled": true
 		},
@@ -40,49 +40,49 @@
 		},
 		{
 			"key": "ADMIN_EMAIL",
-			"value": "admin@gmail.com",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "ADMIN_PASSWORD",
-			"value": "adminpassword123",
+			"value": "",
 			"type": "secret",
 			"enabled": true
 		},
 		{
 			"key": "TEACHER_EMAIL",
-			"value": "eko.prasetyo@gmail.com",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "TEACHER_PASSWORD",
-			"value": "ekopassword123",
+			"value": "",
 			"type": "secret",
 			"enabled": true
 		},
 		{
 			"key": "TEACHER_USER_ID",
-			"value": "550e8400-e29b-41d4-a716-446655440001",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "KELAS_ID",
-			"value": "4",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "PERIODE_ID",
-			"value": "1",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "JADWAL_ID",
-			"value": "1",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
@@ -100,7 +100,7 @@
 		},
 		{
 			"key": "TANGGAL_JURNAL",
-			"value": "2026-06-03",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		},
@@ -136,7 +136,5 @@
 		}
 	],
 	"color": null,
-	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2026-08-06T01:48:23.718Z",
-	"_postman_exported_using": "Postman/12.22.3"
+	"_postman_variable_scope": "environment"
 }
