@@ -21,11 +21,8 @@ class PeriodeOption {
 class PengaturanController extends GetxController {
   SupabaseClient get _supabase => Supabase.instance.client;
 
-  /// Nobox.ai "send message" endpoint. Not present anywhere in the repo
-  /// (checked `assets/api/jm_collection.json` and the whole `design/` folder —
-  /// see design/prompt/012_pengaturan.md §10/§11.4). [testKirimPesan] reports
-  /// "not configured" until this real URL + header shape are supplied.
-  static const String _noboxSendUrl = '';
+  /// Nobox.ai "send message" endpoint, per `assets/api/nobox_collection.json`.
+  static const String _noboxSendUrl = 'https://id.nobox.ai/Inbox/Send';
 
   final RxList<PeriodeOption> periodeOptions = <PeriodeOption>[].obs;
   final Rx<int?> selectedPeriodeId = Rx<int?>(null);
@@ -155,31 +152,24 @@ class PengaturanController extends GetxController {
       showMasterDataError('Data belum lengkap', 'Isi AccountIds dan API Key terlebih dahulu.');
       return;
     }
-    if (_noboxSendUrl.isEmpty) {
-      // The real external endpoint isn't documented anywhere in this repo
-      // (design/prompt/012_pengaturan.md §10), so fail loudly instead of
-      // guessing at a paid API's URL/method/header shape.
-      showMasterDataError(
-        'Integrasi Nobox belum dikonfigurasi',
-        'Endpoint gateway Nobox belum diatur.',
-      );
-      return;
-    }
 
     isTesting.value = true;
     try {
       final response = await GetConnect().post(
         _noboxSendUrl,
         {
-          'to': phone,
-          'accountIds': accountIds,
-          'message': 'Halo ini pesan dari nobox api',
+          'ExtId': normalizeNoboxPhone(phone),
+          'ChannelId': '1',
+          'AccountIds': accountIds,
+          'BodyType': 'Text',
+          'Body': 'Halo ini pesan dari nobox api',
+          'Attachment': '',
         },
-        headers: {'X-Api-Key': apiKey},
+        headers: {'x-api-key': apiKey, 'Content-Type': 'application/json'},
       );
       final status = response.statusCode;
       if (status == null || status >= 400) {
-        throw StateError('Nobox merespons dengan status $status');
+        throw StateError('Nobox merespons dengan status $status: ${response.bodyString}');
       }
       showMasterDataSuccess('Pesan uji terkirim.');
     } catch (error) {
@@ -188,6 +178,16 @@ class PengaturanController extends GetxController {
       isTesting.value = false;
     }
   }
+}
+
+/// Nobox expects local Indonesian numbers as `62xxxxxxxxxx` (no leading `0`,
+/// no `+`) — `master_siswa.no_hp_ortu` and admin-typed test numbers are
+/// stored/entered as `08xxxxxxxxxx`, so normalize before every send.
+String normalizeNoboxPhone(String raw) {
+  final digits = raw.trim().replaceAll(RegExp(r'\D'), '');
+  if (digits.startsWith('0')) return '62${digits.substring(1)}';
+  if (digits.startsWith('62')) return digits;
+  return '62$digits';
 }
 
 class PengaturanPage extends StatefulWidget {
