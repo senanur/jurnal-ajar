@@ -44,6 +44,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .env
+assets/api/*firebase-adminsdk*.json
+android/app/google-services.json
 design/
 .agents/
 android/build/
@@ -51,3 +53,12 @@ skills-lock.json
 
 # Postman environment contains real credentials
 assets/api/jm_env.json
+
+# Postman collection contains a real Nobox.ai x-api-key + WhatsApp account id
+assets/api/nobox_collection.json
+
+# Firebase Web API key + project ids, kept out of git like google-services.json
+lib/firebase_options.dart
+
+# Claude Code local settings/permissions and any embedded worktrees
+.claude/

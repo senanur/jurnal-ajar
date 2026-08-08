@@ -10,13 +10,13 @@ class CurvedGradientListBody extends StatelessWidget {
   const CurvedGradientListBody({
     super.key,
     required this.header,
-    required this.searchField,
+    this.searchField,
     required this.child,
     this.heroHeight = 230,
   });
 
   final Widget header;
-  final Widget searchField;
+  final Widget? searchField;
   final Widget child;
   final double heroHeight;
 
@@ -42,8 +42,10 @@ class CurvedGradientListBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: header),
-            const SizedBox(height: 16),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: searchField),
+            if (searchField != null) ...[
+              const SizedBox(height: 16),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: searchField),
+            ],
             const SizedBox(height: 16),
             Expanded(child: child),
           ],

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,25 +50,7 @@ class LoginController extends GetxController {
         return;
       }
 
-      final profile = await _supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
-
-      switch (profile?['role'] as String?) {
-        case 'admin':
-          Get.offAllNamed(Routes.dashboardAdmin);
-        case 'guru':
-          Get.offAllNamed(Routes.dashboardGuru);
-        default:
-          // No usable role: don't leave a half-authenticated session behind.
-          await _supabase.auth.signOut();
-          _showError(
-            'Akses ditolak',
-            'Akun ini belum memiliki role admin atau guru.',
-          );
-      }
+      await _routeByRole(user);
     } on AuthException catch (error) {
       _showError('Login gagal', error.message);
     } on PostgrestException catch (error) {
@@ -75,6 +59,85 @@ class LoginController extends GetxController {
       _showError('Terjadi kesalahan', '$error');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Signs in via Google (ID token flow), then reuses the same
+  /// role-lookup/navigation path as password login.
+  Future<void> loginWithGoogle() async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+
+    try {
+      final googleSignIn = GoogleSignIn.instance;
+      if (!googleSignIn.supportsAuthenticate()) {
+        _showError(
+          'Login Google gagal',
+          'Platform ini belum mendukung Login with Google.',
+        );
+        return;
+      }
+
+      final account = await googleSignIn.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        _showError('Login Google gagal', 'Tidak menerima ID token dari Google.');
+        return;
+      }
+
+      final response = await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
+
+      final user = response.user;
+      if (user == null) {
+        _showError('Login Google gagal', 'Gagal membuat sesi.');
+        return;
+      }
+
+      await _routeByRole(user);
+    } on GoogleSignInException catch (error) {
+      if (error.code != GoogleSignInExceptionCode.canceled) {
+        _showError('Login Google gagal', error.description ?? '$error');
+      }
+    } on AuthException catch (error) {
+      _showError('Login Google gagal', error.message);
+    } on PostgrestException catch (error) {
+      _showError('Gagal memuat profil', error.message);
+    } catch (error) {
+      _showError('Terjadi kesalahan', '$error');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Reads the caller's own row in `profiles` to decide which dashboard to
+  /// land on. RLS restricts that select to `auth.uid() = id`, so the role
+  /// can't be spoofed from the client.
+  Future<void> _routeByRole(User user) async {
+    final profile = await _supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    final role = profile?['role'] as String?;
+    AuthSession.to.setRole(role);
+
+    switch (role) {
+      case 'admin':
+        Get.offAllNamed(Routes.dashboardAdmin);
+      case 'guru':
+        Get.offAllNamed(Routes.dashboardGuru);
+      default:
+        // No usable role: don't leave a half-authenticated session behind.
+        await _supabase.auth.signOut();
+        AuthSession.to.clear();
+        _showError(
+          'Akses ditolak',
+          'Akun ini belum memiliki role admin atau guru.',
+        );
     }
   }
 
@@ -294,39 +357,47 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      InkWell(
-                        onTap: () {},
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: MainColor.fourthColor,
-                              width: 1.5,
+                      Obx(() {
+                        final isLoading = controller.isLoading.value;
+                        return InkWell(
+                          onTap: isLoading
+                              ? null
+                              : () {
+                                  FocusScope.of(context).unfocus();
+                                  controller.loginWithGoogle();
+                                },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: MainColor.fourthColor,
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.g_mobiledata,
-                                size: 28,
-                                color: Color(0xFF4285F4),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Login with Google',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.g_mobiledata,
+                                  size: 28,
+                                  color: Color(0xFF4285F4),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Login with Google',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                       const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

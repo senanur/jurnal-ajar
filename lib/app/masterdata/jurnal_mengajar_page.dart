@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jurnal_mengajar/app/color.dart';
+import 'package:jurnal_mengajar/app/guru/guru_widgets.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
 import 'package:jurnal_mengajar/app/utils/date_utils.dart';
 import 'package:jurnal_mengajar/app/widgets/curved_gradient_header.dart';
@@ -18,7 +19,6 @@ class JurnalListItem {
     required this.mapelNama,
     required this.materi,
     required this.catatanGuru,
-    required this.fotoUrl,
     required this.status,
     required this.catatanAdmin,
     required this.sakit,
@@ -34,7 +34,6 @@ class JurnalListItem {
   final String mapelNama;
   final String materi;
   final String catatanGuru;
-  final String fotoUrl;
   final String status; // pending | approved | rejected
   final String catatanAdmin;
   final int sakit;
@@ -118,7 +117,7 @@ class JurnalListController extends GetxController {
       final rows = await _supabase
           .from('jurnal_harian')
           .select(
-            'id, jadwal_id, materi, catatan, foto_lampiran_url, status, catatan_admin, '
+            'id, jadwal_id, materi, catatan, status, catatan_admin, '
             'jadwal_mengajar(guru_id, kelas_id, mata_pelajaran_id, '
             'profiles(nama_lengkap, foto_url), '
             'master_kelas(nama_kelas), '
@@ -177,7 +176,6 @@ class JurnalListController extends GetxController {
           mapelNama: (mapel?['nama_mata_pelajaran'] as String?) ?? '-',
           materi: (row['materi'] as String?) ?? '',
           catatanGuru: (row['catatan'] as String?) ?? '',
-          fotoUrl: (row['foto_lampiran_url'] as String?) ?? '',
           status: (row['status'] as String?) ?? 'pending',
           catatanAdmin: (row['catatan_admin'] as String?) ?? '',
           sakit: c['s']!,
@@ -424,6 +422,7 @@ class _JurnalDetailSheetState extends State<JurnalDetailSheet> {
   bool _isLoading = true;
   bool _isSaving = false;
   List<SiswaAbsenItem> _siswaTidakHadir = [];
+  List<String> _fotoUrls = [];
   final TextEditingController _catatanController = TextEditingController();
 
   @override
@@ -468,7 +467,15 @@ class _JurnalDetailSheetState extends State<JurnalDetailSheet> {
         list.add(SiswaAbsenItem(nama: nama, label: label, color: color));
       }
 
-      if (mounted) setState(() => _siswaTidakHadir = list);
+      if (mounted) {
+        setState(() {
+          _siswaTidakHadir = list;
+          _fotoUrls = <String>[];
+        });
+      }
+      loadJurnalFotoUrls(_supabase, widget.item.id).then((urls) {
+        if (mounted) setState(() => _fotoUrls = urls);
+      }).catchError((_) {});
     } catch (error) {
       showMasterDataError('Gagal memuat data presensi', error);
     } finally {
@@ -545,9 +552,8 @@ class _JurnalDetailSheetState extends State<JurnalDetailSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _buildPhoto(item),
-                          const SizedBox(height: 16),
-                          Text(
+                          JurnalFotoGallery(urls: _fotoUrls),
+                          const SizedBox(height: 16),                          Text(
                             item.guruNama,
                             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                           ),
@@ -611,40 +617,6 @@ class _JurnalDetailSheetState extends State<JurnalDetailSheet> {
         padding: const EdgeInsets.only(top: 4),
         child: Text(text, style: const TextStyle(fontSize: 13.5, color: Colors.black54, height: 1.4)),
       );
-
-  Widget _buildPhoto(JurnalListItem item) {
-    if (item.fotoUrl.isEmpty) {
-      return Container(
-        height: 160,
-        decoration: BoxDecoration(color: masterDataFieldFill, borderRadius: BorderRadius.circular(16)),
-        alignment: Alignment.center,
-        child: const Icon(Icons.image_not_supported_outlined, color: Colors.black26, size: 36),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.network(
-        item.fotoUrl,
-        height: 160,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          height: 160,
-          color: masterDataFieldFill,
-          alignment: Alignment.center,
-          child: const Icon(Icons.broken_image_outlined, color: Colors.black26, size: 36),
-        ),
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Container(
-            height: 160,
-            alignment: Alignment.center,
-            child: const CircularProgressIndicator(strokeWidth: 2.4),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildBottomSection(JurnalListItem item) {
     switch (item.status) {

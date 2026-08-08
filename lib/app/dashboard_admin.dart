@@ -4,6 +4,7 @@ import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
 import 'package:jurnal_mengajar/app/utils/date_utils.dart';
 import 'package:jurnal_mengajar/app/widgets/admin_drawer.dart';
+import 'package:jurnal_mengajar/app/widgets/dashboard_shared.dart';
 import 'package:jurnal_mengajar/app/widgets/week_date_strip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -174,7 +175,12 @@ class _DashboardAdminState extends State<DashboardAdmin> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FB),
       drawer: const AdminDrawer(currentRoute: Routes.dashboardAdmin),
-      appBar: _buildAppBar(context),
+      appBar: DashboardAppBar(
+        namaLengkap: controller.namaLengkap,
+        jabatan: controller.jabatan,
+        fotoUrl: controller.fotoUrl,
+        isLoadingProfile: controller.isLoadingProfile,
+      ),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -198,119 +204,6 @@ class _DashboardAdminState extends State<DashboardAdmin> {
           ),
         ),
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: MainColor.primaryColor,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      titleSpacing: 0,
-      title: Obx(() {
-        if (controller.isLoadingProfile.value) {
-          return const _AppBarSkeleton();
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              controller.namaLengkap.value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            if (controller.jabatan.value.isNotEmpty)
-              Text(
-                controller.jabatan.value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withValues(alpha: 0.85),
-                ),
-              ),
-          ],
-        );
-      }),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Obx(() => _UserAvatar(url: controller.fotoUrl.value)),
-        ),
-      ],
-    );
-  }
-}
-
-class _AppBarSkeleton extends StatelessWidget {
-  const _AppBarSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget bar(double width, double height) => Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(6),
-      ),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        bar(140, 14),
-        const SizedBox(height: 6),
-        bar(90, 11),
-      ],
-    );
-  }
-}
-
-class _UserAvatar extends StatelessWidget {
-  const _UserAvatar({required this.url});
-
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.2),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.5),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: url.isEmpty
-          ? const Icon(Icons.person_rounded, color: Colors.white, size: 24)
-          : Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.person_rounded, color: Colors.white, size: 24),
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return const Center(
-                  child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  ),
-                );
-              },
-            ),
     );
   }
 }

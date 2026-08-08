@@ -15,4 +15,13 @@ class Routes {
   static const String masterJam = '/master/jam';
   static const String masterSiswa = '/master/siswa';
   static const String masterGuru = '/master/guru';
+
+  static const String pengaturan = '/pengaturan';
+  static const String tentang = '/tentang';
+
+  // Guru-side routes.
+  static const String guruJadwal = '/guru/jadwal';
+  static const String guruJurnal = '/guru/jurnal';
+  static const String guruStatistik = '/guru/statistik';
+  static const String guruJurnalForm = '/guru/jurnal/form';
 }

@@ -1,0 +1,61 @@
+{
+  "info": {
+    "_postman_id": "0f106b6d-a80b-4501-bde4-7c18463c15d5",
+    "name": "API Nobox.ai",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "44669852",
+    "_collection_link": "https://go.postman.co/collection/44669852-0f106b6d-a80b-4501-bde4-7c18463c15d5?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "SendMessage",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "x-api-key",
+            "value": "",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"ExtId\" : \"\",\r\n    \"ChannelId\" : \"1\",\r\n    \"AccountIds\" : \"\",\r\n    \"BodyType\" : \"Text\",\r\n    \"Body\" : \"Halo ini pesan dari nobox api\",\r\n    \"Attachment\" : \"\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://id.nobox.ai/Inbox/Send",
+          "protocol": "https",
+          "host": [
+            "id",
+            "nobox",
+            "ai"
+          ],
+          "path": [
+            "Inbox",
+            "Send"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    }
+  ]
+}

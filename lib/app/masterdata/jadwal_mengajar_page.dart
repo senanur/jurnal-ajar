@@ -456,8 +456,34 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
   GuruOption? _guru;
   bool _aktif = true;
   bool _jadwalRutin = false;
+  bool _existingIsRecurring = false;
+  bool _hasAnyHistory = false;
   final Set<int> _selectedJamKe = {};
   Set<int> _occupiedJamKe = {};
+
+  // Snapshot of the values loaded from the database, so a save can tell
+  // whether a history-affecting field actually changed versus e.g. only the
+  // "Aktif" toggle (which doesn't rewrite anything a past journal displays).
+  String? _originalGuruId;
+  int? _originalMapelId;
+  Set<int> _originalJamIds = {};
+
+  /// True when the row being saved recurs weekly (tanggal is null, matched by
+  /// `hari`) rather than representing a single dated occurrence.
+  bool get _isRecurring => _isEdit ? _existingIsRecurring : _jadwalRutin;
+
+  /// Whether Aktif may still be toggled even if [_isLocked]: deactivating a
+  /// recurring template only stops *future* occurrences, so unlike
+  /// guru/mapel/jam it never rewrites an already-submitted journal's display.
+  bool get _canEditAktif => !_isLocked || _isRecurring;
+
+  bool get _historyAffectingFieldsChanged =>
+      _guru?.id != _originalGuruId ||
+      _pelajaran?.id != _originalMapelId ||
+      !_setEquals(_selectedJamKe, _originalJamIds);
+
+  bool _setEquals(Set<int> a, Set<int> b) =>
+      a.length == b.length && a.containsAll(b);
 
   @override
   void initState() {
@@ -516,7 +542,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       final jamRows = await _supabase
           .from('master_jam')
           .select('jam_ke, waktu_reguler')
-          .order('jam_ke') as List;
+          .order('jam_ke', ascending: true) as List;
       _allJamKe = [];
       for (final r in jamRows) {
         final row = r as Map<String, dynamic>;
@@ -529,7 +555,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       if (_isEdit) {
         final row = await _supabase
             .from('jadwal_mengajar')
-            .select('kelas_id, mata_pelajaran_id, guru_id, jam_ids, is_active')
+            .select('kelas_id, mata_pelajaran_id, guru_id, jam_ids, is_active, tanggal')
             .eq('id', widget.jadwalId!)
             .single();
 
@@ -540,6 +566,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         _pelajaran = _pelajaranOptions.where((p) => p.id == mapelId).firstOrNull;
         _guru = _guruOptions.where((g) => g.id == guruId).firstOrNull;
         _aktif = (row['is_active'] as bool?) ?? true;
+        _existingIsRecurring = row['tanggal'] == null;
         final jamRaw = row['jam_ids'];
         if (jamRaw is List) {
           for (final v in jamRaw) {
@@ -547,6 +574,9 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
             if (p != null) _selectedJamKe.add(p);
           }
         }
+        _originalGuruId = _guru?.id;
+        _originalMapelId = _pelajaran?.id;
+        _originalJamIds = Set.of(_selectedJamKe);
 
         await _checkLocked();
       }
@@ -569,22 +599,38 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         .select('jadwal_id, jadwal_ids')
         .eq('tanggal', dateStr) as List;
     for (final r in rows) {
-      final row = r as Map<String, dynamic>;
-      final ids = <int>{};
-      final primary = asInt(row['jadwal_id']);
-      if (primary != null) ids.add(primary);
-      final arr = row['jadwal_ids'];
-      if (arr is List) {
-        for (final v in arr) {
-          final p = asInt(v);
-          if (p != null) ids.add(p);
-        }
-      }
-      if (ids.contains(widget.jadwalId)) {
+      if (_rowReferencesThisJadwal(r as Map<String, dynamic>)) {
         _isLocked = true;
-        return;
+        break;
       }
     }
+
+    await _checkAnyHistory();
+  }
+
+  /// Unlike [_isLocked] (scoped to the date currently being viewed), this
+  /// looks across every date. A recurring template is one shared row, so a
+  /// journal filled for *any* past occurrence means editing guru/mapel/jam on
+  /// this row would silently rewrite what that already-submitted journal
+  /// displays — callers use this to require confirmation before saving.
+  Future<void> _checkAnyHistory() async {
+    final rows = await _supabase
+        .from('jurnal_harian')
+        .select('jadwal_id, jadwal_ids')
+        .or('jadwal_id.eq.${widget.jadwalId},jadwal_ids.cs.{${widget.jadwalId}}') as List;
+    _hasAnyHistory = rows.any((r) => _rowReferencesThisJadwal(r as Map<String, dynamic>));
+  }
+
+  bool _rowReferencesThisJadwal(Map<String, dynamic> row) {
+    final primary = asInt(row['jadwal_id']);
+    if (primary == widget.jadwalId) return true;
+    final arr = row['jadwal_ids'];
+    if (arr is List) {
+      for (final v in arr) {
+        if (asInt(v) == widget.jadwalId) return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _recomputeOccupied() async {
@@ -592,33 +638,51 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       setState(() => _occupiedJamKe = {});
       return;
     }
-    final dateStr = formatDateIso(_tanggal);
-    final weekday = _tanggal.weekday;
     try {
-      final rows = await _supabase
-          .from('jadwal_mengajar')
-          .select('id, jam_ids')
-          .eq('is_active', true)
-          .eq('periode_id', _periodeId!)
-          .eq('kelas_id', _kelas!.id)
-          .or('and(tanggal.is.null,hari.eq.$weekday),tanggal.eq.$dateStr') as List;
-      final occ = <int>{};
-      for (final r in rows) {
-        final row = r as Map<String, dynamic>;
-        final rowId = asInt(row['id']);
-        if (_isEdit && rowId == widget.jadwalId) continue;
-        final arr = row['jam_ids'];
-        if (arr is List) {
-          for (final v in arr) {
-            final p = asInt(v);
-            if (p != null) occ.add(p);
-          }
-        }
-      }
+      final occ = await _fetchOccupiedJamKe();
       if (mounted) setState(() => _occupiedJamKe = occ);
     } catch (error) {
       showMasterDataError('Gagal memeriksa bentrok jadwal', error);
     }
+  }
+
+  /// Classroom-conflict lookup for the kelas/jam currently selected.
+  ///
+  /// A one-off entry only needs to check the single date it occupies. A
+  /// recurring entry (tanggal is null, matched weekly by `hari`) can collide
+  /// with occurrences that don't share its literal `tanggal` — including
+  /// one-off dated entries sitting on some future date with the same weekday
+  /// — so its check has to look at every row on that weekday from today's
+  /// selected date onward, not just an exact-date match.
+  Future<Set<int>> _fetchOccupiedJamKe() async {
+    final dateStr = formatDateIso(_tanggal);
+    final weekday = _tanggal.weekday;
+
+    var q = _supabase
+        .from('jadwal_mengajar')
+        .select('id, jam_ids')
+        .eq('is_active', true)
+        .eq('periode_id', _periodeId!)
+        .eq('kelas_id', _kelas!.id);
+    q = _isRecurring
+        ? q.eq('hari', weekday).or('tanggal.is.null,tanggal.gte.$dateStr')
+        : q.or('and(tanggal.is.null,hari.eq.$weekday),tanggal.eq.$dateStr');
+    final rows = await q as List;
+
+    final occ = <int>{};
+    for (final r in rows) {
+      final row = r as Map<String, dynamic>;
+      final rowId = asInt(row['id']);
+      if (_isEdit && rowId == widget.jadwalId) continue;
+      final arr = row['jam_ids'];
+      if (arr is List) {
+        for (final v in arr) {
+          final p = asInt(v);
+          if (p != null) occ.add(p);
+        }
+      }
+    }
+    return occ;
   }
 
   Future<void> _pickTanggal() async {
@@ -670,8 +734,25 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       return;
     }
 
+    if (_isEdit && _isRecurring && _hasAnyHistory && _historyAffectingFieldsChanged) {
+      final proceed = await _confirmRetroactiveEdit();
+      if (proceed != true) return;
+    }
+
     _isSaving.value = true;
     try {
+      // Re-checked here (not just via the greyed-out chips) so a slot someone
+      // else claimed after this form loaded still gets caught before insert.
+      final freshOccupied = await _fetchOccupiedJamKe();
+      if (_selectedJamKe.any(freshOccupied.contains)) {
+        showMasterDataError(
+          'Jadwal bentrok',
+          'Salah satu jam yang dipilih baru saja terpakai di kelas ini. '
+              'Muat ulang halaman dan pilih jam lain.',
+        );
+        return;
+      }
+
       final jamIds = _selectedJamKe.toList()..sort();
       if (_isEdit) {
         await _supabase.from('jadwal_mengajar').update({
@@ -692,13 +773,44 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
           'is_active': _aktif,
         });
       }
-      showMasterDataSuccess('Jadwal mengajar tersimpan.');
       Get.back(result: true);
+      showMasterDataSuccess('Jadwal mengajar tersimpan.');
     } catch (error) {
       showMasterDataError('Gagal menyimpan jadwal', error);
     } finally {
       _isSaving.value = false;
     }
+  }
+
+  /// Recurring jadwal are one shared row across every week, so changing
+  /// guru/mapel/jam here also changes what already-submitted journals for
+  /// past occurrences will display. There's no per-occurrence snapshot to
+  /// fall back on, so the admin has to explicitly accept that before saving.
+  Future<bool?> _confirmRetroactiveEdit() {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Ubah jadwal rutin?'),
+        content: const Text(
+          'Jadwal ini berulang dan sebagian pertemuannya sudah memiliki jurnal. '
+          'Perubahan pada guru, pelajaran, atau jam akan ikut mengubah tampilan '
+          'jadwal pada jurnal yang sudah pernah diisi untuk jadwal ini. '
+          'Lanjutkan menyimpan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: MainColor.primaryColor),
+            child: const Text('Lanjutkan'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _confirmDelete() async {
@@ -726,8 +838,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
     _isSaving.value = true;
     try {
       await _supabase.from('jadwal_mengajar').delete().eq('id', widget.jadwalId!);
-      showMasterDataSuccess('Jadwal mengajar dihapus.');
       Get.back(result: true);
+      showMasterDataSuccess('Jadwal mengajar dihapus.');
     } catch (error) {
       showMasterDataError('Gagal menghapus jadwal', error);
     } finally {
@@ -795,7 +907,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                     MasterDataCheckboxRow(
                       label: 'Aktif',
                       value: _aktif,
-                      onChanged: _isLocked ? (_) {} : (v) => setState(() => _aktif = v),
+                      onChanged: _canEditAktif ? (v) => setState(() => _aktif = v) : (_) {},
                     ),
                     if (!_isEdit) ...[
                       const SizedBox(height: 20),
@@ -806,13 +918,19 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
                 ),
               ),
       ),
-      bottomNavigationBar: (_isLoadingMeta || _isLocked)
+      bottomNavigationBar: (_isLoadingMeta || (_isLocked && !_isRecurring))
           ? null
           : Obx(() => MasterDataSaveBar(isSaving: _isSaving.value, onSave: _save)),
     );
   }
 
   Widget _buildLockedBanner() {
+    final message = _isRecurring
+        ? 'Pertemuan ini sudah memiliki jurnal, sehingga guru, pelajaran, dan jam '
+            'tidak dapat diubah atau dihapus. Jadwal rutin ini masih bisa '
+            'dinonaktifkan untuk menghentikan pertemuan berikutnya.'
+        : 'Jurnal untuk jadwal ini sudah diisi oleh guru, sehingga jadwal tidak '
+            'dapat diubah atau dihapus lagi.';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -827,7 +945,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Jurnal untuk jadwal ini sudah diisi oleh guru, sehingga jadwal tidak dapat diubah atau dihapus lagi.',
+              message,
               style: TextStyle(fontSize: 12.5, color: Colors.red.shade700, fontWeight: FontWeight.w600),
             ),
           ),
@@ -925,19 +1043,34 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         style: TextStyle(fontSize: 13, color: Colors.black45),
       );
     }
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+    final rows = <List<int>>[];
+    for (var i = 0; i < _allJamKe.length; i += 5) {
+      rows.add(_allJamKe.sublist(i, i + 5 > _allJamKe.length ? _allJamKe.length : i + 5));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final jamKe in _allJamKe)
-          _JamChip(
-            jamKe: jamKe,
-            selected: _selectedJamKe.contains(jamKe),
-            occupied: _occupiedJamKe.contains(jamKe) && !_selectedJamKe.contains(jamKe),
-            locked: _isLocked,
-            onTap: () => _toggleJam(jamKe),
+        for (final row in rows)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (final jamKe in row) _buildJamChip(jamKe),
+              ],
+            ),
           ),
       ],
+    );
+  }
+
+  Widget _buildJamChip(int jamKe) {
+    return _JamChip(
+      jamKe: jamKe,
+      selected: _selectedJamKe.contains(jamKe),
+      occupied: _occupiedJamKe.contains(jamKe) && !_selectedJamKe.contains(jamKe),
+      locked: _isLocked,
+      onTap: () => _toggleJam(jamKe),
     );
   }
 
@@ -974,7 +1107,10 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
           Switch(
             value: _jadwalRutin,
             activeThumbColor: MainColor.primaryColor,
-            onChanged: (v) => setState(() => _jadwalRutin = v),
+            onChanged: (v) {
+              setState(() => _jadwalRutin = v);
+              _recomputeOccupied();
+            },
           ),
         ],
       ),

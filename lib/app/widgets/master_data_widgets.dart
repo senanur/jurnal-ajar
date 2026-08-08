@@ -270,6 +270,7 @@ class MasterDataTextField extends StatelessWidget {
     this.validator,
     this.textCapitalization = TextCapitalization.none,
     this.maxLines = 1,
+    this.obscureText = false,
   });
 
   final String label;
@@ -279,6 +280,7 @@ class MasterDataTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final TextCapitalization textCapitalization;
   final int maxLines;
+  final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
@@ -296,6 +298,7 @@ class MasterDataTextField extends StatelessWidget {
           textCapitalization: textCapitalization,
           validator: validator,
           maxLines: maxLines,
+          obscureText: obscureText,
           style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,

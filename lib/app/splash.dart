@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// How long the splash stays on screen before handing off to the login page.
+/// How long the splash stays on screen before handing off.
 const Duration splashDuration = Duration(seconds: 4);
 
 class SplashScreen extends StatefulWidget {
@@ -22,7 +24,39 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(splashDuration, () => Get.offAllNamed(Routes.login));
+    _timer = Timer(splashDuration, _decideDestination);
+  }
+
+  /// Routes to the dashboard when a session is already present (e.g. the app
+  /// reloads after a web OAuth redirect, or a native session persists), and to
+  /// login otherwise. Reads the caller's own `profiles.role`, just like login.
+  Future<void> _decideDestination() async {
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+    if (session == null) {
+      Get.offAllNamed(Routes.login);
+      return;
+    }
+
+    final profile = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+    final role = profile?['role'] as String?;
+    AuthSession.to.setRole(role);
+
+    switch (role) {
+      case 'admin':
+        Get.offAllNamed(Routes.dashboardAdmin);
+      case 'guru':
+        Get.offAllNamed(Routes.dashboardGuru);
+      default:
+        await supabase.auth.signOut();
+        AuthSession.to.clear();
+        Get.offAllNamed(Routes.login);
+    }
   }
 
   @override
