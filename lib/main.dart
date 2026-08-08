@@ -24,6 +24,7 @@ import 'package:jurnal_mengajar/app/masterdata/siswa_page.dart';
 import 'package:jurnal_mengajar/app/pengaturan/pengaturan_page.dart';
 import 'package:jurnal_mengajar/app/register.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:jurnal_mengajar/app/services/notification_service.dart';
 import 'package:jurnal_mengajar/app/splash.dart';
 import 'package:jurnal_mengajar/app/tentang/tentang_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -69,6 +70,7 @@ Future<void> main() async {
   // Must exist before the first GetPage builds: AdminOnlyMiddleware reads it
   // synchronously from redirect(), which can't await Get.put itself.
   Get.put(AuthSession(), permanent: true);
+  Get.put(NotificationService(), permanent: true);
 
   runApp(const MyApp());
 }

@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:jurnal_mengajar/app/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginController extends GetxController {
@@ -128,8 +129,10 @@ class LoginController extends GetxController {
     switch (role) {
       case 'admin':
         Get.offAllNamed(Routes.dashboardAdmin);
+        NotificationService.to.registerDeviceToken();
       case 'guru':
         Get.offAllNamed(Routes.dashboardGuru);
+        NotificationService.to.registerDeviceToken();
       default:
         // No usable role: don't leave a half-authenticated session behind.
         await _supabase.auth.signOut();

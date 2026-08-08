@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:jurnal_mengajar/app/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// How long the splash stays on screen before handing off.
@@ -50,8 +51,10 @@ class _SplashScreenState extends State<SplashScreen> {
     switch (role) {
       case 'admin':
         Get.offAllNamed(Routes.dashboardAdmin);
+        NotificationService.to.registerDeviceToken();
       case 'guru':
         Get.offAllNamed(Routes.dashboardGuru);
+        NotificationService.to.registerDeviceToken();
       default:
         await supabase.auth.signOut();
         AuthSession.to.clear();

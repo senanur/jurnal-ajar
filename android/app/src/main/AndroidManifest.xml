@@ -3,6 +3,8 @@
          manifests declare this separately, so its absence here only ever
          surfaced as "Failed host lookup" on a release APK. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Runtime-requested on Android 13+ before FCM notifications can show. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="jurnal_mengajar"
         android:name="${applicationName}"

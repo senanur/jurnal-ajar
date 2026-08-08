@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
 import 'package:jurnal_mengajar/app/routes.dart';
+import 'package:jurnal_mengajar/app/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// "Coming soon" snackbar shared by every unbuilt drawer item / "Semua" link
@@ -159,6 +160,7 @@ Future<void> confirmLogout(BuildContext context) {
         TextButton(
           onPressed: () async {
             Navigator.of(dialogContext).pop();
+            await NotificationService.to.deleteDeviceToken();
             await Supabase.instance.client.auth.signOut();
             AuthSession.to.clear();
             Get.offAllNamed(Routes.login);
