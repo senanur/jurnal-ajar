@@ -171,12 +171,11 @@ async function sendFcmToGuru(
   }
 }
 
-// Notifies every student's parent in the jurnal's kelas via WhatsApp
-// (Nobox.ai), only called when the jurnal was approved. `presensi_siswa`
-// only logs exceptions (Izin/Sakit/Alpha) — a student with no row is
-// assumed to have attended, so the message is personalized either way.
-// Best-effort per recipient: one failed send (or an unconfigured Nobox
-// account) must not block the guru's FCM notification above.
+// Notifies parents of absent students via WhatsApp (Nobox.ai), only called
+// when the jurnal was approved. `presensi_siswa` only logs exceptions
+// (Izin/Sakit/Alpha) — students with no row attended normally and are not
+// messaged. Best-effort per recipient: one failed send (or an unconfigured
+// Nobox account) must not block the guru's FCM notification above.
 async function sendWhatsappToParents(
   supabase: SupabaseClient,
   jadwal: JadwalInfo,
@@ -193,27 +192,28 @@ async function sendWhatsappToParents(
       return { skipped: true, reason: "Nobox belum dikonfigurasi di Pengaturan" };
     }
 
-    if (!jadwal.kelas_id) {
-      return { skipped: true, reason: "jadwal has no kelas_id" };
-    }
-
-    const { data: siswaList, error: siswaError } = await supabase
-      .from("master_siswa")
-      .select("id, nama_siswa, no_hp_ortu")
-      .eq("kelas_id", jadwal.kelas_id)
-      .not("no_hp_ortu", "is", null);
-    if (siswaError) throw siswaError;
-    if (!siswaList || siswaList.length === 0) {
-      return { skipped: true, reason: "no siswa with parent phone in kelas" };
-    }
-
     const { data: presensi, error: presensiError } = await supabase
       .from("presensi_siswa")
       .select("siswa_id, status")
       .eq("jurnal_id", record.id);
     if (presensiError) throw presensiError;
-    const absenceBySiswa = new Map<number, string>(
-      (presensi ?? []).map((p) => [p.siswa_id as number, p.status as string]),
+    if (!presensi || presensi.length === 0) {
+      return { skipped: true, reason: "no absent siswa recorded for this jurnal" };
+    }
+
+    const siswaIds = presensi.map((p) => p.siswa_id as number);
+    const { data: siswaList, error: siswaError } = await supabase
+      .from("master_siswa")
+      .select("id, nama_siswa, no_hp_ortu")
+      .in("id", siswaIds)
+      .not("no_hp_ortu", "is", null);
+    if (siswaError) throw siswaError;
+    if (!siswaList || siswaList.length === 0) {
+      return { skipped: true, reason: "no absent siswa with parent phone" };
+    }
+
+    const statusBySiswa = new Map<number, string>(
+      presensi.map((p) => [p.siswa_id as number, p.status as string]),
     );
 
     const mapel = jadwal.master_mata_pelajaran?.nama_mata_pelajaran ?? "-";
@@ -223,10 +223,9 @@ async function sendWhatsappToParents(
 
     const results = await Promise.all(
       siswaList.map(async (siswa) => {
-        const absenceStatus = absenceBySiswa.get(siswa.id as number);
-        const body = absenceStatus
-          ? `Yth. Orang Tua/Wali dari ${siswa.nama_siswa},\nJurnal mengajar ${mapel} kelas ${kelas} tanggal ${tanggal} bersama ${guru} telah disetujui.\nAnanda tercatat *${absenceStatus}* pada pertemuan ini.`
-          : `Yth. Orang Tua/Wali dari ${siswa.nama_siswa},\nJurnal mengajar ${mapel} kelas ${kelas} tanggal ${tanggal} bersama ${guru} telah disetujui.\nMateri: ${record.materi ?? "-"}`;
+        const absenceStatus = statusBySiswa.get(siswa.id as number) ?? "-";
+        const body =
+          `Yth. Orang Tua/Wali dari ${siswa.nama_siswa},\nAnanda tercatat *${absenceStatus}* pada pelajaran ${mapel} kelas ${kelas} tanggal ${tanggal} bersama ${guru}.`;
 
         const res = await fetch(NOBOX_SEND_URL, {
           method: "POST",
@@ -243,7 +242,7 @@ async function sendWhatsappToParents(
             Attachment: "",
           }),
         });
-        return { siswa_id: siswa.id, ok: res.ok, status: res.status };
+        return { siswa_id: siswa.id, status_kehadiran: absenceStatus, ok: res.ok, status: res.status };
       }),
     );
 
