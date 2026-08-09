@@ -82,7 +82,10 @@ class LoginController extends GetxController {
       final account = await googleSignIn.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null) {
-        _showError('Login Google gagal', 'Tidak menerima ID token dari Google.');
+        _showError(
+          'Login Google gagal',
+          'Tidak menerima ID token dari Google.',
+        );
         return;
       }
 
@@ -113,35 +116,46 @@ class LoginController extends GetxController {
     }
   }
 
-  /// Reads the caller's own row in `profiles` to decide which dashboard to
-  /// land on. RLS restricts that select to `auth.uid() = id`, so the role
-  /// can't be spoofed from the client.
+  /// Reads the caller's own row in `profiles` to decide where to land. RLS
+  /// restricts that select to `auth.uid() = id`, so the role can't be
+  /// spoofed from the client.
   Future<void> _routeByRole(User user) async {
-    final profile = await _supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
+    final profile =
+        await _supabase
+            .from('profiles')
+            .select('role, nama_lengkap, jabatan, alamat, no_telp, foto_url')
+            .eq('id', user.id)
+            .maybeSingle();
 
     final role = profile?['role'] as String?;
     AuthSession.to.setRole(role);
 
-    switch (role) {
-      case 'admin':
-        Get.offAllNamed(Routes.dashboardAdmin);
-        NotificationService.to.registerDeviceToken();
-      case 'guru':
-        Get.offAllNamed(Routes.dashboardGuru);
-        NotificationService.to.registerDeviceToken();
-      default:
-        // No usable role: don't leave a half-authenticated session behind.
-        await _supabase.auth.signOut();
-        AuthSession.to.clear();
-        _showError(
-          'Akses ditolak',
-          'Akun ini belum memiliki role admin atau guru.',
-        );
+    if (role != 'admin' && role != 'guru') {
+      // No usable role: don't leave a half-authenticated session behind.
+      await _supabase.auth.signOut();
+      AuthSession.to.clear();
+      _showError(
+        'Akses ditolak',
+        'Akun ini belum memiliki role admin atau guru.',
+      );
+      return;
     }
+
+    // handle_new_user() always inserts a profiles row on first sign-in, but
+    // alamat/no_telp are the two fields it never gets from Google metadata
+    // and defaults to ''. An empty value here reliably means this account
+    // hasn't been through profile setup yet (see complete_profile.dart).
+    final alamat = profile?['alamat'] as String? ?? '';
+    final noTelp = profile?['no_telp'] as String? ?? '';
+    if (alamat.isEmpty || noTelp.isEmpty) {
+      Get.offAllNamed(Routes.completeProfile, arguments: profile);
+      return;
+    }
+
+    Get.offAllNamed(
+      role == 'admin' ? Routes.dashboardAdmin : Routes.dashboardGuru,
+    );
+    NotificationService.to.registerDeviceToken();
   }
 
   void _showError(String title, String message) {
@@ -320,23 +334,24 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Center(
-                              child: isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
+                              child:
+                                  isLoading
+                                      ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : Text(
+                                        'Login',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    )
-                                  : Text(
-                                      'Login',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
                             ),
                           ),
                         );
@@ -363,12 +378,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Obx(() {
                         final isLoading = controller.isLoading.value;
                         return InkWell(
-                          onTap: isLoading
-                              ? null
-                              : () {
-                                  FocusScope.of(context).unfocus();
-                                  controller.loginWithGoogle();
-                                },
+                          onTap:
+                              isLoading
+                                  ? null
+                                  : () {
+                                    FocusScope.of(context).unfocus();
+                                    controller.loginWithGoogle();
+                                  },
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 16),

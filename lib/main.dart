@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:jurnal_mengajar/firebase_options.dart';
 import 'package:jurnal_mengajar/app/auth_session.dart';
 import 'package:jurnal_mengajar/app/color.dart';
+import 'package:jurnal_mengajar/app/complete_profile.dart';
 import 'package:jurnal_mengajar/app/dashboard_admin.dart';
 import 'package:jurnal_mengajar/app/dashboard_guru.dart';
 import 'package:jurnal_mengajar/app/guru/jadwal_guru_page.dart';
@@ -58,9 +59,10 @@ Future<void> main() async {
     // ID token via Credential Manager; iOS/web need their own clientId too.
     final isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     await GoogleSignIn.instance.initialize(
-      clientId: kIsWeb
-          ? dotenv.env['WEB_CLIENT']
-          : (isIOS ? dotenv.env['IOS_CLIENT'] : null),
+      clientId:
+          kIsWeb
+              ? dotenv.env['WEB_CLIENT']
+              : (isIOS ? dotenv.env['IOS_CLIENT'] : null),
       serverClientId: kIsWeb ? null : dotenv.env['WEB_CLIENT'],
     );
   } catch (e) {
@@ -114,6 +116,11 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: Routes.register,
           page: () => const Register(),
+          transition: Transition.fade,
+        ),
+        GetPage(
+          name: Routes.completeProfile,
+          page: () => const CompleteProfileScreen(),
           transition: Transition.fade,
         ),
         GetPage(

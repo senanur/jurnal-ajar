@@ -38,6 +38,12 @@ Di kedua jalur, **role** (`admin`/`guru`) selalu dibaca ulang dari tabel `profil
 
 `AuthSession` (`lib/app/auth_session.dart`) meng-cache role ini secara in-memory supaya `AdminOnlyMiddleware` bisa mengecek secara sinkron saat navigasi (middleware GetX tidak bisa `await` panggilan jaringan). Konsekuensinya: role **harus** di-set ulang setiap kali sesi baru terbentuk (login biasa, login Google, maupun restore sesi di splash) — kalau ada jalur baru yang lupa melakukan ini, admin akan selalu ter-redirect ke dashboard guru walau role di database sudah benar.
 
+### Pembuatan profil otomatis & deteksi profil belum lengkap
+
+Trigger Postgres `on_auth_user_created` (`AFTER INSERT ON auth.users`) menjalankan `handle_new_user()`, yang selalu membuat baris `profiles` untuk user baru — baik dari registrasi email/password maupun login Google pertama kali — dengan `COALESCE` atas `raw_user_meta_data`. Untuk login Google, hanya `nama_lengkap`/`foto_url` yang terisi dari data Google; `role` selalu default ke `'guru'`, dan `jabatan` default ke `'Guru Pengajar'`, sementara `alamat` dan `no_telp` selalu jadi string kosong (`''`), bukan `NULL`, karena tidak ada data itu di profil Google.
+
+`login.dart` (`_routeByRole`) dan `splash.dart` (`_decideDestination`) memakai **`alamat == '' || no_telp == ''`** sebagai sinyal "profil belum lengkap" dan mengarahkan ke `Routes.completeProfile` (lihat `features.md`) alih-alih ke dashboard. Definisi trigger dan constraint `check_no_telp` di tabel `profiles` hanya ada di database Supabase (project `kgvbqytzpzzxourmlwlo`), **tidak** ada file migration di repo ini — perubahan pada keduanya harus dilacak lewat riwayat `apply_migration` di Supabase, bukan git log.
+
 ## Skema Database
 
 Tabel-tabel utama (skema lengkap ada di dashboard Supabase, **bukan** di repo ini sebagai file migration):

@@ -39,27 +39,36 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    final profile = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .maybeSingle();
+    final profile =
+        await supabase
+            .from('profiles')
+            .select('role, nama_lengkap, jabatan, alamat, no_telp, foto_url')
+            .eq('id', session.user.id)
+            .maybeSingle();
 
     final role = profile?['role'] as String?;
     AuthSession.to.setRole(role);
 
-    switch (role) {
-      case 'admin':
-        Get.offAllNamed(Routes.dashboardAdmin);
-        NotificationService.to.registerDeviceToken();
-      case 'guru':
-        Get.offAllNamed(Routes.dashboardGuru);
-        NotificationService.to.registerDeviceToken();
-      default:
-        await supabase.auth.signOut();
-        AuthSession.to.clear();
-        Get.offAllNamed(Routes.login);
+    if (role != 'admin' && role != 'guru') {
+      await supabase.auth.signOut();
+      AuthSession.to.clear();
+      Get.offAllNamed(Routes.login);
+      return;
     }
+
+    // See login.dart's _routeByRole for why alamat/no_telp are the
+    // completeness signal.
+    final alamat = profile?['alamat'] as String? ?? '';
+    final noTelp = profile?['no_telp'] as String? ?? '';
+    if (alamat.isEmpty || noTelp.isEmpty) {
+      Get.offAllNamed(Routes.completeProfile, arguments: profile);
+      return;
+    }
+
+    Get.offAllNamed(
+      role == 'admin' ? Routes.dashboardAdmin : Routes.dashboardGuru,
+    );
+    NotificationService.to.registerDeviceToken();
   }
 
   @override
