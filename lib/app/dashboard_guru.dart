@@ -59,6 +59,8 @@ class DashboardGuruController extends GetxController {
 
   Future<void> refreshActivity() => _loadActivity();
 
+  Future<void> refreshDashboard() => Future.wait([_loadProfile(), _loadActivity()]);
+
   Future<void> _loadProfile() async {
     isLoadingProfile.value = true;
     try {
@@ -145,85 +147,89 @@ class _DashboardGuruState extends State<DashboardGuru> {
               onSelectDate: controller.selectDate,
             ),
           ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SectionHeader(
-                  title: 'Jadwal Mengajar',
-                  onSemua: () => Get.to(() => const JadwalGuruPage()),
-                ),
-                const SizedBox(height: 12),
-                Obx(() {
-                  if (controller.isLoadingActivity.value) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-                  final full = controller.jadwalList;
-                  if (full.isEmpty) {
-                    return const MasterDataEmptyState(
-                      message: 'Tidak ada jadwal mengajar pada tanggal ini.',
-                    );
-                  }
-                  final list = full.take(_kDashboardListPreviewCap).toList();
-                  return Column(
-                    children: [
-                      for (var i = 0; i < list.length; i++)
-                        MasterDataEntrance(
-                          delay: Duration(milliseconds: 40 * i),
-                          child: JadwalCard(
-                            item: list[i],
-                            onTap: () => _openDetail(list[i]),
+          child: RefreshIndicator(
+            onRefresh: controller.refreshDashboard,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionHeader(
+                    title: 'Jadwal Mengajar',
+                    onSemua: () => Get.to(() => const JadwalGuruPage()),
+                  ),
+                  const SizedBox(height: 12),
+                  Obx(() {
+                    if (controller.isLoadingActivity.value) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final full = controller.jadwalList;
+                    if (full.isEmpty) {
+                      return const MasterDataEmptyState(
+                        message: 'Tidak ada jadwal mengajar pada tanggal ini.',
+                      );
+                    }
+                    final list = full.take(_kDashboardListPreviewCap).toList();
+                    return Column(
+                      children: [
+                        for (var i = 0; i < list.length; i++)
+                          MasterDataEntrance(
+                            delay: Duration(milliseconds: 40 * i),
+                            child: JadwalCard(
+                              item: list[i],
+                              onTap: () => _openDetail(list[i]),
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                }),
-                const SizedBox(height: 24),
-                _SectionHeader(
-                  title: 'Jurnal Mengajar',
-                  onSemua: () => Get.to(() => const JurnalGuruPage()),
-                ),
-                const SizedBox(height: 12),
-                Obx(() {
-                  if (controller.isLoadingActivity.value) {
-                    return const SizedBox.shrink();
-                  }
-                  final full = controller.jurnalList;
-                  if (full.isEmpty) {
-                    return const MasterDataEmptyState(
-                      message: 'Belum ada jurnal mengajar.',
+                      ],
                     );
-                  }
-                  final list = full.take(_kDashboardListPreviewCap).toList();
-                  return Column(
-                    children: [
-                      for (var i = 0; i < list.length; i++)
-                        MasterDataEntrance(
-                          delay: Duration(milliseconds: 40 * i),
-                          child: Builder(
-                            builder: (context) {
-                              final jurnal = list[i];
-                              final jadwal = controller.jadwalList
-                                  .where((j) => j.id == jurnal.jadwalId)
-                                  .firstOrNull;
-                              return JurnalCard(
-                                item: jurnal,
-                                onTap: () {
-                                  if (jadwal != null) _openDetail(jadwal);
-                                },
-                              );
-                            },
+                  }),
+                  const SizedBox(height: 24),
+                  _SectionHeader(
+                    title: 'Jurnal Mengajar',
+                    onSemua: () => Get.to(() => const JurnalGuruPage()),
+                  ),
+                  const SizedBox(height: 12),
+                  Obx(() {
+                    if (controller.isLoadingActivity.value) {
+                      return const SizedBox.shrink();
+                    }
+                    final full = controller.jurnalList;
+                    if (full.isEmpty) {
+                      return const MasterDataEmptyState(
+                        message: 'Belum ada jurnal mengajar.',
+                      );
+                    }
+                    final list = full.take(_kDashboardListPreviewCap).toList();
+                    return Column(
+                      children: [
+                        for (var i = 0; i < list.length; i++)
+                          MasterDataEntrance(
+                            delay: Duration(milliseconds: 40 * i),
+                            child: Builder(
+                              builder: (context) {
+                                final jurnal = list[i];
+                                final jadwal = controller.jadwalList
+                                    .where((j) => j.id == jurnal.jadwalId)
+                                    .firstOrNull;
+                                return JurnalCard(
+                                  item: jurnal,
+                                  onTap: () {
+                                    if (jadwal != null) _openDetail(jadwal);
+                                  },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                    ],
-                  );
-                }),
-                const SizedBox(height: 24),
-              ],
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         ),

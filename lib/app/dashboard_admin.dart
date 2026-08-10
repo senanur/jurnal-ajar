@@ -53,6 +53,8 @@ class DashboardAdminController extends GetxController {
     _loadStats();
   }
 
+  Future<void> refreshDashboard() => Future.wait([_loadProfile(), _loadStats()]);
+
   Future<void> _loadProfile() async {
     isLoadingProfile.value = true;
     try {
@@ -183,24 +185,28 @@ class _DashboardAdminState extends State<DashboardAdmin> {
       ),
       body: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Obx(
-                () => WeekDateStrip(
-                  weekDays: controller.weekDays,
-                  selectedDate: controller.selectedDate.value,
-                  weekDirection: controller.weekDirection.value,
-                  onPrevious: controller.previousWeek,
-                  onNext: controller.nextWeek,
-                  onSelectDate: controller.selectDate,
+        child: RefreshIndicator(
+          onRefresh: controller.refreshDashboard,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Obx(
+                  () => WeekDateStrip(
+                    weekDays: controller.weekDays,
+                    selectedDate: controller.selectedDate.value,
+                    weekDirection: controller.weekDirection.value,
+                    onPrevious: controller.previousWeek,
+                    onNext: controller.nextWeek,
+                    onSelectDate: controller.selectDate,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              _StatGrid(controller: controller),
-            ],
+                const SizedBox(height: 24),
+                _StatGrid(controller: controller),
+              ],
+            ),
           ),
         ),
       ),
